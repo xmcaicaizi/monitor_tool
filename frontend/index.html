@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>服务监控工具</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body>
+    <div id="app">
+        <div class="header">
+            <h1>服务监控工具</h1>
+            <div class="header-buttons">
+                <button @click="checkAllServices" class="btn btn-primary">一键检测所有服务</button>
+                <div class="daily-check-controls">
+                    <input type="time" v-model="dailyCheckTime" value="09:00">
+                    <button @click="scheduleDailyCheck" class="btn btn-secondary">设置每日检查</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button @click="showAddForm = true" class="btn btn-success">添加服务</button>
+        </div>
+        
+        <div v-if="showAddForm" class="modal">
+            <div class="modal-content">
+                <span class="close" @click="showAddForm = false">&times;</span>
+                <h2>添加新服务</h2>
+                <form @submit.prevent="addService">
+                    <div class="form-group">
+                        <label for="name">服务名称:</label>
+                        <input type="text" id="name" v-model="newService.name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="url">服务地址:</label>
+                        <input type="url" id="url" v-model="newService.url" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="interval">检测间隔:</label>
+                        <div class="interval-inputs">
+                            <input type="number" v-model="newService.intervalValue" min="1" value="1">
+                            <select v-model="newService.intervalUnit">
+                                <option value="minute">分钟</option>
+                                <option value="second">秒</option>
+                                <option value="hour">小时</option>
+                                <option value="day">天</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success">添加</button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="services-container">
+            <div v-for="service in services" :key="service.id" class="service-card" :class="service.status">
+                <div class="card-header">
+                    <h3>{{ service.name }}</h3>
+                    <span class="status-badge" :class="service.status">{{ getStatusText(service.status) }}</span>
+                </div>
+                <div class="card-body">
+                    <p><strong>地址:</strong> {{ service.url }}</p>
+                    <p><strong>检测间隔:</strong> {{ formatInterval(service.interval) }}</p>
+                    <p><strong>最后检测:</strong> {{ formatDateTime(service.lastChecked) }}</p>
+                </div>
+                <div class="card-footer">
+                    <button @click="checkService(service.id)" class="btn btn-secondary">立即检测</button>
+                    <button @click="openEditForm(service)" class="btn btn-warning">编辑</button>
+                    <button @click="deleteService(service.id)" class="btn btn-danger">删除</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Edit Service Modal -->
+        <div v-if="showEditForm" class="modal">
+            <div class="modal-content">
+                <span class="close" @click="showEditForm = false">&times;</span>
+                <h2>编辑服务</h2>
+                <form @submit.prevent="updateService">
+                    <div class="form-group">
+                        <label for="edit-name">服务名称:</label>
+                        <input type="text" id="edit-name" v-model="editService.name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-url">服务地址:</label>
+                        <input type="url" id="edit-url" v-model="editService.url" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-interval">检测间隔:</label>
+                        <div class="interval-inputs">
+                            <input type="number" id="edit-interval" v-model="editService.intervalValue" min="1" required>
+                            <select v-model="editService.intervalUnit">
+                                <option value="minute">分钟</option>
+                                <option value="second">秒</option>
+                                <option value="hour">小时</option>
+                                <option value="day">天</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success">更新</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/js/app.js"></script>
+</body>
+</html>
