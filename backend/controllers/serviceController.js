@@ -74,6 +74,7 @@ async function addService(req, res) {
       name: req.body.name,
       url: req.body.url,
       interval: req.body.interval || '60 seconds',
+      auth: req.body.auth || null, // Add auth field
       status: 'unknown',
       lastChecked: null
     };
@@ -104,7 +105,8 @@ async function updateService(req, res) {
       ...services[serviceIndex],
       name: req.body.name || services[serviceIndex].name,
       url: req.body.url || services[serviceIndex].url,
-      interval: req.body.interval || services[serviceIndex].interval
+      interval: req.body.interval || services[serviceIndex].interval,
+      auth: req.body.auth || services[serviceIndex].auth || null
     };
     
     services[serviceIndex] = updatedService;
@@ -151,7 +153,7 @@ async function checkServiceStatus(req, res) {
       return res.status(404).json({ error: 'Service not found' });
     }
     
-    const result = await checkService(service.url);
+    const result = await checkService(service.url, service.auth);
     service.status = result.status;
     service.lastChecked = new Date().toISOString();
     
@@ -177,7 +179,7 @@ async function checkAllServices(req, res) {
     const results = [];
     
     for (const service of services) {
-      const result = await checkService(service.url);
+      const result = await checkService(service.url, service.auth);
       service.status = result.status;
       service.lastChecked = new Date().toISOString();
       results.push({

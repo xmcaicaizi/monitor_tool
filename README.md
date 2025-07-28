@@ -50,6 +50,18 @@ npm run build
 
 这将生成一个可执行文件 `monitor-tool.exe`。
 
+### Windows 环境安装
+
+对于 Windows 用户，项目提供了安装包：
+
+1. 运行 `package.bat` 脚本创建分发包
+2. 解压生成的 `service-monitor-tool.zip` 文件
+3. 运行 `install.bat` 脚本进行安装
+4. 安装完成后，桌面会创建快捷方式，双击即可启动应用
+
+注意：首次运行前请确保已安装 Node.js 环境（推荐 v14.x 或更高版本）。
+下载地址：https://nodejs.org/
+
 ## 使用说明
 
 1. **添加服务**：点击"添加服务"按钮，填写服务名称、地址和检测间隔

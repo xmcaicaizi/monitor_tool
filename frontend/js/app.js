@@ -11,14 +11,20 @@ createApp({
           name: '',
           url: '',
           intervalValue: 1,
-          intervalUnit: 'minute'
+          intervalUnit: 'minute',
+          authType: '',
+          authKey: '',
+          authValue: ''
         },
         editService: {
           id: null,
           name: '',
           url: '',
           intervalValue: 1,
-          intervalUnit: 'minute'
+          intervalUnit: 'minute',
+          authType: '',
+          authKey: '',
+          authValue: ''
         }
       };
     },
@@ -37,11 +43,21 @@ createApp({
         // Format interval as "value unit"
         const interval = `${this.newService.intervalValue} ${this.newService.intervalUnit}s`;
         
+        // Prepare service data
         const serviceData = {
           name: this.newService.name,
           url: this.newService.url,
           interval: interval
         };
+        
+        // Add auth data if provided
+        if (this.newService.authType) {
+          serviceData.auth = {
+            type: this.newService.authType,
+            key: this.newService.authType === 'bearer' ? 'Authorization' : this.newService.authKey,
+            value: this.newService.authValue
+          };
+        }
         
         const response = await fetch('/api/services', {
           method: 'POST',
@@ -53,7 +69,15 @@ createApp({
         
         if (response.ok) {
           this.showAddForm = false;
-          this.newService = { name: '', url: '', intervalValue: 1, intervalUnit: 'minute' };
+          this.newService = { 
+            name: '', 
+            url: '', 
+            intervalValue: 1, 
+            intervalUnit: 'minute',
+            authType: '',
+            authKey: '',
+            authValue: ''
+          };
           this.fetchServices();
         } else {
           console.error('Error adding service:', await response.text());
@@ -90,7 +114,10 @@ createApp({
         name: service.name,
         url: service.url,
         intervalValue: 1,
-        intervalUnit: 'minute'
+        intervalUnit: 'minute',
+        authType: '',
+        authKey: '',
+        authValue: ''
       };
       
       // Parse the interval string to extract value and unit
@@ -106,6 +133,13 @@ createApp({
         this.editService.intervalUnit = 'second';
       }
       
+      // Handle auth data if present
+      if (service.auth && typeof service.auth === 'object') {
+        this.editService.authType = service.auth.type || '';
+        this.editService.authKey = service.auth.type === 'bearer' ? '' : (service.auth.key || '');
+        this.editService.authValue = service.auth.value || '';
+      }
+      
       this.showEditForm = true;
     },
     
@@ -115,11 +149,24 @@ createApp({
         // Format interval as "value unit"
         const interval = `${this.editService.intervalValue} ${this.editService.intervalUnit}s`;
         
+        // Prepare service data
         const serviceData = {
           name: this.editService.name,
           url: this.editService.url,
           interval: interval
         };
+        
+        // Add auth data if provided
+        if (this.editService.authType) {
+          serviceData.auth = {
+            type: this.editService.authType,
+            key: this.editService.authType === 'bearer' ? 'Authorization' : this.editService.authKey,
+            value: this.editService.authValue
+          };
+        } else if (this.editService.authType === '' && (this.editService.authKey || this.editService.authValue)) {
+          // If auth type is empty but key or value is provided, set auth to null
+          serviceData.auth = null;
+        }
         
         const response = await fetch(`/api/services/${this.editService.id}`, {
           method: 'PUT',
@@ -131,7 +178,16 @@ createApp({
         
         if (response.ok) {
           this.showEditForm = false;
-          this.editService = { id: null, name: '', url: '', intervalValue: 1, intervalUnit: 'minute' };
+          this.editService = { 
+            id: null, 
+            name: '', 
+            url: '', 
+            intervalValue: 1, 
+            intervalUnit: 'minute',
+            authType: '',
+            authKey: '',
+            authValue: ''
+          };
           this.fetchServices();
         } else {
           console.error('Error updating service:', await response.text());
@@ -301,6 +357,30 @@ createApp({
       if (seconds > 0) result += `${seconds} 秒`;
       
       return result.trim();
+    },
+    
+    // Helper method to get label for auth key input based on auth type
+    getAuthKeyLabel(authType) {
+      switch (authType) {
+        case 'header':
+          return 'Header名称';
+        case 'query':
+          return '参数名称';
+        default:
+          return 'Key';
+      }
+    },
+    
+    // Helper method to get placeholder for auth key input based on auth type
+    getAuthKeyPlaceholder(authType) {
+      switch (authType) {
+        case 'header':
+          return '例如: X-API-Key';
+        case 'query':
+          return '例如: api_key';
+        default:
+          return '';
+      }
     }
   },
   

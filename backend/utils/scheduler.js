@@ -31,10 +31,34 @@ async function writeServices(services) {
   }
 }
 
-// Check service status
-async function checkService(url) {
+// Check service status with optional authentication
+async function checkService(url, auth = null) {
   try {
-    const response = await axios.get(url, { timeout: 5000 });
+    // Prepare axios config
+    const config = { timeout: 5000 };
+    
+    // Add authentication if provided
+    if (auth && typeof auth === 'object') {
+      switch (auth.type) {
+        case 'header':
+          // Add to headers
+          config.headers = config.headers || {};
+          config.headers[auth.key] = auth.value;
+          break;
+        case 'query':
+          // Add to URL query parameters
+          const separator = url.includes('?') ? '&' : '?';
+          url += `${separator}${auth.key}=${encodeURIComponent(auth.value)}`;
+          break;
+        case 'bearer':
+          // Add bearer token to Authorization header
+          config.headers = config.headers || {};
+          config.headers['Authorization'] = `Bearer ${auth.value}`;
+          break;
+      }
+    }
+    
+    const response = await axios.get(url, config);
     return {
       status: response.status === 200 ? 'up' : 'down'
     };
@@ -172,7 +196,7 @@ function scheduleService(service) {
   // Schedule new job
   const job = schedule.scheduleJob(cronExpression, async function() {
     console.log(`Checking service: ${service.name} (${service.url})`);
-    const result = await checkService(service.url);
+    const result = await checkService(service.url, service.auth);
     await updateServiceStatus(service.id, result.status);
     console.log(`Service ${service.name} is ${result.status}`);
   });
@@ -222,7 +246,7 @@ function scheduleDailyCheck(time) {
       const services = await readServices();
       for (const service of services) {
         console.log(`Checking service: ${service.name} (${service.url})`);
-        const result = await checkService(service.url);
+        const result = await checkService(service.url, service.auth);
         await updateServiceStatus(service.id, result.status);
         console.log(`Service ${service.name} is ${result.status}`);
       }
