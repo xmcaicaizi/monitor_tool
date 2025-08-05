@@ -1,0 +1,23 @@
+互联网apikey：qiko-JPUY3S8rjJKejcykAuej3EZV
+VPN网apikey：qiko-BU3p5zIn4bmAAvY8eTlOzuts  http://10.10.63.78:6080/v1/chat-messages
+
+
+Headers:
+Content-Type:application/json
+Authorization:Bearer qiko-BU3p5zIn4bmAAvY8eTlOzuts
+
+Body:
+{
+
+    "inputs": {
+        "source_language": "中文（简体）",
+        "target_language": "维吾尔语"
+    },
+
+    "query": "在忙什么呢",
+
+    "response_mode": "blocking",
+
+    "user": "abc-123"
+
+}

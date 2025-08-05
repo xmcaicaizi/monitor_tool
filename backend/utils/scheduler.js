@@ -2,6 +2,7 @@ const schedule = require('node-schedule');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs').promises;
+const FormData = require('form-data');
 
 const CONFIG_FILE = path.join(__dirname, '../../config/services.json');
 
@@ -31,18 +32,18 @@ async function writeServices(services) {
   }
 }
 
-// Check service status with optional authentication
-async function checkService(url, auth = null) {
+// Check service status with optional authentication and different request methods
+async function checkService(service) {
+  const { url, auth = null, method = 'GET', body = null, fileConfig = null } = service;
   try {
     // Prepare axios config
-    const config = { timeout: 5000 };
+    const config = { timeout: 180000 };
     
     // Add authentication if provided
     if (auth && typeof auth === 'object') {
+      config.headers = config.headers || {};
       switch (auth.type) {
         case 'header':
-          // Add to headers
-          config.headers = config.headers || {};
           config.headers[auth.key] = auth.value;
           break;
         case 'query':
@@ -51,21 +52,69 @@ async function checkService(url, auth = null) {
           url += `${separator}${auth.key}=${encodeURIComponent(auth.value)}`;
           break;
         case 'bearer':
-          // Add bearer token to Authorization header
-          config.headers = config.headers || {};
           config.headers['Authorization'] = `Bearer ${auth.value}`;
           break;
       }
     }
-    
-    const response = await axios.get(url, config);
+
+    let response;
+    const requestMethod = method ? method.toUpperCase() : 'GET';
+
+    switch (requestMethod) {
+      case 'POST':
+        config.headers = config.headers || {};
+        config.headers['Content-Type'] = 'application/json';
+        response = await axios.post(url, body, config);
+        break;
+      
+      case 'POST_FILE':
+        const form = new FormData();
+        
+        if (fileConfig && fileConfig.testFilePath) {
+          const filePath = path.resolve(fileConfig.testFilePath);
+          
+          try {
+            if (await fs.access(filePath).then(() => true).catch(() => false)) {
+              form.append(fileConfig.fieldName || 'file', await fs.readFile(filePath), path.basename(filePath));
+            } else {
+              // 如果测试文件不存在，创建一个临时测试文件
+              const testContent = fileConfig.testContent || 'test content';
+              form.append(fileConfig.fieldName || 'file', Buffer.from(testContent), 'test.txt');
+            }
+          } catch (fileError) {
+            console.error(`File error for service ${service.name}: ${fileError.message}`);
+            // 使用默认测试内容
+            form.append(fileConfig.fieldName || 'file', Buffer.from('test'), 'test.txt');
+          }
+        } else {
+          // 默认测试文件
+          form.append('file', Buffer.from('test'), 'test.txt');
+        }
+        
+        config.headers = { ...config.headers, ...form.getHeaders() };
+        response = await axios.post(url, form, config);
+        break;
+      
+      default: // GET
+        let requestUrl = url;
+        if (auth && auth.type === 'query') {
+          const separator = requestUrl.includes('?') ? '&' : '?';
+          requestUrl += `${separator}${auth.key}=${encodeURIComponent(auth.value)}`;
+        }
+        response = await axios.get(requestUrl, config);
+        break;
+    }
+
     return {
-      status: response.status === 200 ? 'up' : 'down'
+      status: response.status >= 200 && response.status < 300 ? 'up' : 'down',
+      statusCode: response.status,
+      responseTime: Date.now()
     };
   } catch (error) {
     return {
       status: 'down',
-      error: error.message
+      error: error.message,
+      statusCode: error.response ? error.response.status : null
     };
   }
 }
@@ -196,7 +245,7 @@ function scheduleService(service) {
   // Schedule new job
   const job = schedule.scheduleJob(cronExpression, async function() {
     console.log(`Checking service: ${service.name} (${service.url})`);
-    const result = await checkService(service.url, service.auth);
+    const result = await checkService(service);
     await updateServiceStatus(service.id, result.status);
     console.log(`Service ${service.name} is ${result.status}`);
   });
@@ -246,7 +295,7 @@ function scheduleDailyCheck(time) {
       const services = await readServices();
       for (const service of services) {
         console.log(`Checking service: ${service.name} (${service.url})`);
-        const result = await checkService(service.url, service.auth);
+        const result = await checkService(service);
         await updateServiceStatus(service.id, result.status);
         console.log(`Service ${service.name} is ${result.status}`);
       }

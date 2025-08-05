@@ -1,0 +1,9 @@
+1、聊天记录分析：http://10.10.63.78:6080/v1/chat-messages
+			key：qiko-wybk4IhVMZD9nNFPc69neXMf
+			
+2、智能翻译：http://10.10.63.78:6080/v1/chat-messages
+		key：qiko-BU3p5zIn4bmAAvY8eTlOzuts
+		
+3、语音转换：http://10.10.63.78:6667/stt
+
+4、图片OCR识别：http://10.10.63.78:8009/ai/ocr

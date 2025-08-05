@@ -38,6 +38,24 @@
                         <input type="url" id="url" v-model="newService.url" required>
                     </div>
                     <div class="form-group">
+                        <label for="method">请求方法:</label>
+                        <select id="method" v-model="newService.method">
+                            <option value="GET">GET</option>
+                            <option value="POST">POST (JSON)</option>
+                            <option value="POST_FILE">POST (文件上传)</option>
+                        </select>
+                    </div>
+                    <div v-if="newService.method === 'POST'" class="form-group">
+                        <label for="body">请求体 (JSON):</label>
+                        <textarea id="body" v-model="newService.body" rows="4" placeholder='{"key": "value"}'></textarea>
+                    </div>
+                    <div v-if="newService.method === 'POST_FILE'" class="form-group">
+                        <label for="file-field">文件字段名:</label>
+                        <input type="text" id="file-field" v-model="newService.fileFieldName" placeholder="file" value="file">
+                        <label for="test-file">测试文件路径 (可选):</label>
+                        <input type="text" id="test-file" v-model="newService.testFilePath" placeholder="留空使用默认测试内容">
+                    </div>
+                    <div class="form-group">
                         <label for="interval">检测间隔:</label>
                         <div class="interval-inputs">
                             <input type="number" v-model="newService.intervalValue" min="1" value="1">
@@ -79,6 +97,7 @@
                 </div>
                 <div class="card-body">
                     <p><strong>地址:</strong> {{ service.url }}</p>
+                    <p><strong>请求方法:</strong> {{ service.method || 'GET' }}</p>
                     <p><strong>检测间隔:</strong> {{ formatInterval(service.interval) }}</p>
                     <p><strong>最后检测:</strong> {{ formatDateTime(service.lastChecked) }}</p>
                 </div>
@@ -103,6 +122,24 @@
                     <div class="form-group">
                         <label for="edit-url">服务地址:</label>
                         <input type="url" id="edit-url" v-model="editService.url" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-method">请求方法:</label>
+                        <select id="edit-method" v-model="editService.method">
+                            <option value="GET">GET</option>
+                            <option value="POST">POST (JSON)</option>
+                            <option value="POST_FILE">POST (文件上传)</option>
+                        </select>
+                    </div>
+                    <div v-if="editService.method === 'POST'" class="form-group">
+                        <label for="edit-body">请求体 (JSON):</label>
+                        <textarea id="edit-body" v-model="editService.body" rows="4" placeholder='{"key": "value"}'></textarea>
+                    </div>
+                    <div v-if="editService.method === 'POST_FILE'" class="form-group">
+                        <label for="edit-file-field">文件字段名:</label>
+                        <input type="text" id="edit-file-field" v-model="editService.fileFieldName" placeholder="file">
+                        <label for="edit-test-file">测试文件路径 (可选):</label>
+                        <input type="text" id="edit-test-file" v-model="editService.testFilePath" placeholder="留空使用默认测试内容">
                     </div>
                     <div class="form-group">
                         <label for="edit-interval">检测间隔:</label>

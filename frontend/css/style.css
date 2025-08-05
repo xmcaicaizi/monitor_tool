@@ -129,6 +129,10 @@ body {
     border-left: 5px solid #95a5a6;
 }
 
+.service-card.checking {
+    border-left: 5px solid #f39c12;
+}
+
 .card-header {
     padding: 20px;
     display: flex;
@@ -163,6 +167,18 @@ body {
 .status-badge.unknown {
     background-color: #95a5a6;
     color: white;
+}
+
+.status-badge.checking {
+    background-color: #f39c12;
+    color: white;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
 }
 
 .card-body {

@@ -10,6 +10,10 @@ createApp({
         newService: {
           name: '',
           url: '',
+          method: 'GET',
+          body: '',
+          fileFieldName: 'file',
+          testFilePath: '',
           intervalValue: 1,
           intervalUnit: 'minute',
           authType: '',
@@ -20,6 +24,10 @@ createApp({
           id: null,
           name: '',
           url: '',
+          method: 'GET',
+          body: '',
+          fileFieldName: 'file',
+          testFilePath: '',
           intervalValue: 1,
           intervalUnit: 'minute',
           authType: '',
@@ -47,8 +55,27 @@ createApp({
         const serviceData = {
           name: this.newService.name,
           url: this.newService.url,
+          method: this.newService.method,
           interval: interval
         };
+
+        // Add request body for POST requests
+        if (this.newService.method === 'POST' && this.newService.body) {
+          try {
+            serviceData.body = JSON.parse(this.newService.body);
+          } catch (e) {
+            alert('请输入有效的JSON格式');
+            return;
+          }
+        }
+
+        // Add file config for file upload requests
+        if (this.newService.method === 'POST_FILE') {
+          serviceData.fileConfig = {
+            fieldName: this.newService.fileFieldName || 'file',
+            testFilePath: this.newService.testFilePath || null
+          };
+        }
         
         // Add auth data if provided
         if (this.newService.authType) {
@@ -72,6 +99,10 @@ createApp({
           this.newService = { 
             name: '', 
             url: '', 
+            method: 'GET',
+            body: '',
+            fileFieldName: 'file',
+            testFilePath: '',
             intervalValue: 1, 
             intervalUnit: 'minute',
             authType: '',
@@ -113,12 +144,27 @@ createApp({
         id: service.id,
         name: service.name,
         url: service.url,
+        method: service.method || 'GET',
+        body: '',
+        fileFieldName: 'file',
+        testFilePath: '',
         intervalValue: 1,
         intervalUnit: 'minute',
         authType: '',
         authKey: '',
         authValue: ''
       };
+      
+      // Handle request body for POST requests
+      if (service.body && typeof service.body === 'object') {
+        this.editService.body = JSON.stringify(service.body, null, 2);
+      }
+
+      // Handle file config for file upload requests
+      if (service.fileConfig && typeof service.fileConfig === 'object') {
+        this.editService.fileFieldName = service.fileConfig.fieldName || 'file';
+        this.editService.testFilePath = service.fileConfig.testFilePath || '';
+      }
       
       // Parse the interval string to extract value and unit
       if (typeof service.interval === 'string') {
@@ -153,8 +199,31 @@ createApp({
         const serviceData = {
           name: this.editService.name,
           url: this.editService.url,
+          method: this.editService.method,
           interval: interval
         };
+
+        // Add request body for POST requests
+        if (this.editService.method === 'POST' && this.editService.body) {
+          try {
+            serviceData.body = JSON.parse(this.editService.body);
+          } catch (e) {
+            alert('请输入有效的JSON格式');
+            return;
+          }
+        } else if (this.editService.method !== 'POST') {
+          serviceData.body = null;
+        }
+
+        // Add file config for file upload requests
+        if (this.editService.method === 'POST_FILE') {
+          serviceData.fileConfig = {
+            fieldName: this.editService.fileFieldName || 'file',
+            testFilePath: this.editService.testFilePath || null
+          };
+        } else {
+          serviceData.fileConfig = null;
+        }
         
         // Add auth data if provided
         if (this.editService.authType) {
@@ -163,8 +232,7 @@ createApp({
             key: this.editService.authType === 'bearer' ? 'Authorization' : this.editService.authKey,
             value: this.editService.authValue
           };
-        } else if (this.editService.authType === '' && (this.editService.authKey || this.editService.authValue)) {
-          // If auth type is empty but key or value is provided, set auth to null
+        } else {
           serviceData.auth = null;
         }
         
@@ -182,6 +250,10 @@ createApp({
             id: null, 
             name: '', 
             url: '', 
+            method: 'GET',
+            body: '',
+            fileFieldName: 'file',
+            testFilePath: '',
             intervalValue: 1, 
             intervalUnit: 'minute',
             authType: '',
@@ -199,17 +271,44 @@ createApp({
     
     async checkService(id) {
       try {
+        // 先将服务状态设置为检测中
+        const serviceIndex = this.services.findIndex(s => s.id === id);
+        if (serviceIndex !== -1) {
+          this.services[serviceIndex].status = 'checking';
+        }
+        
         const response = await fetch(`/api/services/${id}/check`, {
           method: 'POST'
         });
         
         if (response.ok) {
-          this.fetchServices();
+          const result = await response.json();
+          console.log('Service check started:', result.message);
+          
+          // 每2秒刷新一次服务状态，直到检测完成
+          const checkInterval = setInterval(() => {
+            this.fetchServices().then(() => {
+              const service = this.services.find(s => s.id === id);
+              if (service && service.status !== 'checking') {
+                clearInterval(checkInterval);
+              }
+            });
+          }, 2000);
+          
+          // 10分钟后停止轮询（防止无限轮询）
+          setTimeout(() => {
+            clearInterval(checkInterval);
+          }, 600000);
+          
         } else {
           console.error('Error checking service:', await response.text());
+          // 恢复原状态
+          this.fetchServices();
         }
       } catch (error) {
         console.error('Error checking service:', error);
+        // 恢复原状态
+        this.fetchServices();
       }
     },
     
@@ -220,7 +319,32 @@ createApp({
         });
         
         if (response.ok) {
+          const result = await response.json();
+          console.log('All services check started:', result.message);
+          
+          // 立即刷新一次以显示"检测中"状态
           this.fetchServices();
+          
+          // 开始轮询检测状态
+          const checkInterval = setInterval(async () => {
+            await this.fetchServices();
+            
+            // 检查是否还有服务在检测中
+            const hasCheckingServices = this.services.some(service => service.status === 'checking');
+            
+            if (!hasCheckingServices) {
+              // 所有服务检测完成，停止轮询
+              clearInterval(checkInterval);
+              console.log('All services check completed');
+            }
+          }, 2000); // 每2秒检查一次
+          
+          // 10分钟后强制停止轮询（防止无限轮询）
+          setTimeout(() => {
+            clearInterval(checkInterval);
+            console.log('All services check polling timeout');
+          }, 600000);
+          
         } else {
           console.error('Error checking all services:', await response.text());
         }
@@ -257,6 +381,8 @@ createApp({
           return '正常';
         case 'down':
           return '异常';
+        case 'checking':
+          return '检测中';
         default:
           return '未知';
       }
