@@ -7,10 +7,14 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "build": "pkg server.js --targets node14-win-x64 --output monitor-tool.exe",
-    "package": "npm run clean && npm run zip",
-    "clean": "rd /s /q dist 2>nul || echo No dist folder to clean",
-    "zip": "mkdir dist && xcopy . dist\\monitor-tool\\ /E /I /EXCLUDE:.gitignore && cd dist && powershell -Command \"Compress-Archive -Path monitor-tool -DestinationPath monitor-tool.zip\""
+    "build": "npm run build:exe",
+    "build:exe": "pkg server.js --targets node16-win-x64 --output dist/monitor-tool.exe",
+    "build:portable": "npm run clean && npm run copy-files && npm run create-portable",
+    "package": "npm run build:portable",
+    "clean": "if exist dist rd /s /q dist",
+    "copy-files": "mkdir dist\\monitor-tool && robocopy . dist\\monitor-tool /E /XF package-exclude.txt /XD node_modules .git dist & exit /b 0",
+    "create-portable": "cd dist && powershell -Command \"Compress-Archive -Path monitor-tool -DestinationPath monitor-tool-portable.zip\"",
+    "zip": "npm run create-portable"
   },
   "keywords": [
     "monitoring",
@@ -22,11 +26,13 @@
   "pkg": {
     "assets": [
       "frontend/**/*",
-      "config/**/*"
+      "config/**/*",
+      "package.json"
     ],
     "targets": [
       "node16-win-x64"
-    ]
+    ],
+    "outputPath": "dist"
   },
   "dependencies": {
     "axios": "^1.4.0",
